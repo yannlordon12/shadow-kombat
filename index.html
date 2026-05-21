@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHADOW KOMBAT - Jeu de Combat Gratuit</title>
+    <meta name="description" content="Shadow Kombat - Jeu de combat multijoueur en ligne. Aucune installation nécessaire !">
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --red: #ff0000;
+            --red-dark: #cc0000;
+            --blue: #00ccff;
+            --dark: #050a18;
+            --light: #e0e0e0;
+            --gold: #ffd700;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark);
+            color: var(--light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(ellipse at 10% 20%, rgba(255,0,0,0.1) 0%, transparent 50%),
+                        radial-gradient(ellipse at 90% 80%, rgba(0,180,255,0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        #bloodParticles {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1000; overflow: hidden;
+        }
+        .blood-particle {
+            position: absolute;
+            background: radial-gradient(ellipse at center, rgba(255,0,0,0.8) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: fall linear forwards;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        header {
+            background: rgba(5,10,24,0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,0,0,0.2);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--light); }
+        .logo-icon { font-size: 32px; color: var(--red); text-shadow: 0 0 10px var(--red); }
+        .logo-text { font-size: 24px; font-weight: bold; letter-spacing: 2px; }
+        .logo-text span { color: var(--red); }
+        nav ul { display: flex; list-style: none; gap: 30px; }
+        nav a {
+            color: var(--light); text-decoration: none; font-size: 14px; letter-spacing: 1px;
+            padding: 8px 0; position: relative; transition: color 0.3s;
+        }
+        nav a::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px;
+            background: var(--red); transition: width 0.3s;
+        }
+        nav a:hover { color: var(--red); }
+        nav a:hover::after { width: 100%; }
+        .hero {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 120px 20px 60px; position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(255,0,0,0.1) 0%, transparent 50%, rgba(0,180,255,0.05) 100%);
+            pointer-events: none;
+        }
+        .hero-content { max-width: 800px; z-index: 1; }
+        .hero h1 { font-size: 4rem; font-weight: 900; margin-bottom: 20px; letter-spacing: 4px; text-shadow: 0 0 20px rgba(255,0,0,0.5); }
+        .hero h1 span { color: var(--red); }
+        .hero p { font-size: 1.2rem; color: #aaa; margin-bottom: 40px; }
+        .btn {
+            padding: 15px 35px; border: none; border-radius: 5px; font-size: 16px;
+            font-weight: bold; letter-spacing: 2px; cursor: pointer; transition: all 0.3s;
+            text-decoration: none; display: inline-block; text-transform: uppercase;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--red), var(--red-dark)); color: white;
+            box-shadow: 0 0 20px rgba(255,0,0,0.4);
+        }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 0 30px rgba(255,0,0,0.6); }
+        .section { padding: 80px 0; }
+        .section-title { text-align: center; margin-bottom: 50px; }
+        .section-title h2 { font-size: 2.5rem; margin-bottom: 15px; position: relative; display: inline-block; }
+        .section-title h2::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); width: 80px; height: 3px; background: var(--red); }
+        .section-title p { color: #aaa; font-size: 1.1rem; letter-spacing: 1px; }
+        .game-section { background: rgba(0,0,0,0.2); }
+        .game-content { display: grid; grid-template-columns: 1fr; gap: 50px; align-items: center; justify-content: center; }
+        .game-info h2 { font-size: 2rem; margin-bottom: 20px; color: var(--gold); }
+        .game-info p { color: #aaa; margin-bottom: 20px; line-height: 1.8; }
+        .play-now-btn { text-align: center; margin-top: 30px; }
+        .launcher-btn {
+            background: linear-gradient(135deg, var(--red), var(--red-dark)); color: white;
+            padding: 20px 50px; font-size: 1.5rem; font-weight: bold; border: none;
+            border-radius: 8px; cursor: pointer; box-shadow: 0 0 30px rgba(255,0,0,0.5);
+            transition: all 0.3s; letter-spacing: 3px; position: relative; overflow: hidden;
+        }
+        .launcher-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(255,0,0,0.7); }
+        .game-container {
+            display: none; width: 100%; max-width: 1200px; height: 600px;
+            margin: 30px auto 0; background: #000; border-radius: 8px;
+            overflow: hidden; box-shadow: 0 0 30px rgba(255,0,0,0.5);
+            border: 1px solid rgba(255,0,0,0.3); position: relative;
+        }
+        .game-container iframe { width: 100%; height: 100%; border: none; background: #000; }
+        .loading-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 2000; flex-direction: column;
+            align-items: center; justify-content: center; gap: 20px;
+        }
+        .loading-screen.active { display: flex; }
+        .spinner {
+            width: 60px; height: 60px; border: 4px solid rgba(255,0,0,0.3);
+            border-top: 4px solid var(--red); border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { color: var(--red); font-size: 18px; font-weight: bold; letter-spacing: 2px; }
+        .controls-section { background: rgba(0,0,0,0.1); }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-top: 40px; }
+        .control-card {
+            background: rgba(10,20,40,0.8); border: 1px solid rgba(0,204,255,0.3);
+            border-radius: 8px; padding: 25px; text-align: center;
+        }
+        .control-card h3 { color: var(--blue); margin-bottom: 20px; font-size: 1.3rem; }
+        .control-keys { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .key {
+            background: rgba(0,0,0,0.5); border: 1px solid #444; padding: 8px 15px;
+            border-radius: 5px; font-family: monospace; font-weight: bold; color: var(--gold);
+            text-shadow: 0 0 5px rgba(255,215,0,0.5);
+        }
+        .control-card p { color: #aaa; font-size: 0.95rem; }
+        footer {
+            background: rgba(5,10,24,0.95); padding: 40px 0 20px;
+            border-top: 1px solid rgba(255,0,0,0.2);
+        }
+        .footer-bottom { text-align: center; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); color: #666; font-size: 0.9rem; }
+        .warning { text-align: center; color: #ff4444; font-size: 0.9rem; margin-top: 15px; letter-spacing: 1px; }
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .launcher-btn { padding: 15px 30px; font-size: 1.2rem; }
+            .game-container { height: 450px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="bloodParticles"></div>
+
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="#" class="logo">
+                    <i class="fas fa-skull-crossbones logo-icon"></i>
+                    <span class="logo-text">SHADOW <span>KOMBAT</span></span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>SHADOW <span>KOMBAT</span></h1>
+            <p>Le jeu de combat ultime directement dans ton navigateur !</p>
+            <a href="#game" class="btn btn-primary">JOUER MAINTENANT</a>
+        </div>
+    </section>
+
+    <section id="game" class="section game-section">
+        <div class="container">
+            <div class="section-title">
+                <h2>LANCER LE JEU</h2>
+                <p>Clique sur le bouton pour commencer à combattre !</p>
+            </div>
+            <div style="text-align: center;">
+                <button class="launcher-btn" onclick="launchGame()">🎮 LANCER SHADOW KOMBAT</button>
+                <div class="game-container" id="gameContainer">
+                    <iframe id="gameFrame" src=""></iframe>
+                    <button onclick="quitGame()" style="position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.6); border: 1px solid #333; color: #888; cursor: pointer; padding: 5px 10px; border-radius: 4px; font-size: 12px;">← RETOUR</button>
+                    <button onclick="toggleFullscreen()" style="position: absolute; top: 10px; right: 10px; z-index: 100; background: rgba(0,0,0,0.6); border: 1px solid #333; color: #888; cursor: pointer; padding: 5px 10px; border-radius: 4px; font-size: 16px;">🔍 PLEIN ÉCRAN</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="controls" class="section controls-section">
+        <div class="container">
+            <div class="section-title">
+                <h2>⌨️ CONTRÔLES</h2>
+                <p>Apprends les commandes pour dominer tes adversaires</p>
+            </div>
+            <div class="controls-grid">
+                <div class="control-card">
+                    <h3>🎮 Déplacement</h3>
+                    <div class="control-keys">
+                        <span class="key">W</span>
+                        <span class="key">A</span>
+                        <span class="key">S</span>
+                        <span class="key">D</span>
+                    </div>
+                    <p>Bouge ton personnage</p>
+                </div>
+                <div class="control-card">
+                    <h3>⚔️ Attaques</h3>
+                    <div class="control-keys">
+                        <span class="key">J</span>
+                        <span class="key">K</span>
+                        <span class="key">L</span>
+                    </div>
+                    <p>Poing / Pied / Spécial</p>
+                </div>
+                <div class="control-card">
+                    <h3>🛡️ Défense</h3>
+                    <div class="control-keys">
+                        <span class="key">U</span>
+                        <span class="key">I</span>
+                    </div>
+                    <p>Bloquer / Sauter</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 SHADOW KOMBAT | <a href="#" style="color: #ff4444;">Conditions d'utilisation</a></p>
+                <p class="warning">⚠️ Jeu violent - Déconseillé aux personnes sensibles</p>
+            </div>
+        </div>
+    </footer>
+
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <div class="loading-text">CHARGEMENT DU JEU...</div>
+    </div>
+
+    <script>
+        // Effets de sang en arrière-plan
+        setInterval(() => {
+            const p = document.createElement('div');
+            p.className = 'blood-particle';
+            p.style.width = p.style.height = (Math.random() * 12 + 6) + 'px';
+            p.style.left = Math.random() * window.innerWidth + 'px';
+            p.style.top = '-20px';
+            p.style.animation = `fall ${Math.random() * 5 + 3}s linear ${Math.random() * 2}s forwards`;
+            document.getElementById('bloodParticles').appendChild(p);
+            setTimeout(() => p
